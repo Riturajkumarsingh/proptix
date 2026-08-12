@@ -25,8 +25,8 @@ const userRoutes        = require('./src/modules/users/user.routes');
 const app = express();
 const server = http.createServer(app);
 
-// ── Socket.IO ─────────────────────────────────────────────────────────────────
-initSocket(server);
+// ── Socket.IO (Disabled for Vercel) ───────────────────────────────────────────
+// initSocket(server);
 
 // ── Security Middleware ───────────────────────────────────────────────────────
 app.use(helmet({
@@ -134,4 +134,4 @@ process.on('unhandledRejection', (reason) => {
 
 startServer();
 
-module.exports = { app, server };
+module.exports = app;
