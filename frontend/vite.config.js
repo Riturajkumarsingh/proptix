@@ -30,18 +30,5 @@ export default defineConfig({
       },
     },
   },
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor:    ['react', 'react-dom'],
-          router:    ['react-router-dom'],
-          redux:     ['@reduxjs/toolkit', 'react-redux'],
-          ui:        ['@mui/material', '@mui/icons-material'],
-          charts:    ['chart.js', 'react-chartjs-2'],
-          motion:    ['framer-motion'],
-        },
-      },
-    },
-  },
+
 });
