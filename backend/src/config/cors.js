@@ -2,7 +2,7 @@
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173')
   .split(',')
-  .map((o) => o.trim());
+  .map((o) => o.trim().replace(/\/$/, ''));
 
 const corsOptions = {
   origin: (origin, callback) => {

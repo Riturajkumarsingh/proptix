@@ -12,7 +12,8 @@
     "generate": "prisma generate",
     "studio": "prisma studio",
     "seed": "node src/utils/seed.js",
-    "reset": "prisma migrate reset --force"
+    "reset": "prisma migrate reset --force",
+    "postinstall": "prisma generate"
   },
   "keywords": [
     "real-estate",
