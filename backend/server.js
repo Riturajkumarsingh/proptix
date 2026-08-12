@@ -25,6 +25,9 @@ const userRoutes        = require('./src/modules/users/user.routes');
 const app = express();
 const server = http.createServer(app);
 
+// ── Trust Proxy (Required for Vercel + Rate Limiting) ─────────────────────────
+app.set('trust proxy', 1);
+
 // ── Socket.IO (Disabled for Vercel) ───────────────────────────────────────────
 // initSocket(server);
 
@@ -132,6 +135,8 @@ process.on('unhandledRejection', (reason) => {
   process.exit(1);
 });
 
-startServer();
+if (require.main === module) {
+  startServer();
+}
 
 module.exports = app;
