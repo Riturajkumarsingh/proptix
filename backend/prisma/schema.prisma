@@ -1,0 +1,1070 @@
+// This is your Prisma schema file for Enterprise Real Estate Management System
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+//  ENUMS
+// ============================================================
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  ASSOCIATE
+  SUB_ASSOCIATE
+  CUSTOMER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING
+}
+
+enum ProjectType {
+  RESIDENTIAL
+  COMMERCIAL
+  AGRICULTURAL
+  INDUSTRIAL
+  LUXURY_VILLA
+  MIXED_USE
+}
+
+enum ProjectStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
+enum PlotStatus {
+  AVAILABLE
+  RESERVED
+  BOOKED
+  SOLD
+  REGISTERED
+  POSSESSED
+  BLOCKED
+  CANCELLED
+}
+
+enum PlotFacing {
+  EAST
+  WEST
+  NORTH
+  SOUTH
+  NORTH_EAST
+  NORTH_WEST
+  SOUTH_EAST
+  SOUTH_WEST
+}
+
+enum LeadSource {
+  FACEBOOK
+  GOOGLE
+  WEBSITE
+  REFERRAL
+  WALK_IN
+  CALL
+  WHATSAPP
+  INSTAGRAM
+  YOUTUBE
+  NEWSPAPER
+  HOARDINGS
+  OTHER
+}
+
+enum LeadStage {
+  NEW
+  CONTACTED
+  INTERESTED
+  SITE_VISIT
+  NEGOTIATION
+  BOOKED
+  WON
+  LOST
+}
+
+enum LeadPriority {
+  LOW
+  MEDIUM
+  HIGH
+  HOT
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentMode {
+  CASH
+  UPI
+  CHEQUE
+  BANK_TRANSFER
+  ONLINE
+  DD
+  NEFT
+  RTGS
+  IMPS
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  PARTIAL
+}
+
+enum EMIStatus {
+  PENDING
+  PAID
+  OVERDUE
+  WAIVED
+}
+
+enum AgreementStatus {
+  DRAFT
+  SENT
+  SIGNED
+  REGISTERED
+  CANCELLED
+}
+
+enum PossessionStatus {
+  PENDING
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum DocumentType {
+  AADHAR
+  PAN
+  PASSPORT
+  VOTER_ID
+  DRIVING_LICENSE
+  REGISTRY
+  AGREEMENT
+  RECEIPT
+  INVOICE
+  SITE_MAP
+  BROCHURE
+  LEGAL
+  OTHER
+}
+
+enum NotificationType {
+  BOOKING
+  PAYMENT
+  LEAD
+  FOLLOW_UP
+  SYSTEM
+  ALERT
+  ANNOUNCEMENT
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum SupportTicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum BlogStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CommissionStatus {
+  PENDING
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+enum SiteVisitStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+// ============================================================
+//  MODELS
+// ============================================================
+
+model User {
+  id                String     @id @default(uuid())
+  name              String
+  email             String     @unique
+  phone             String     @unique
+  password          String
+  role              Role       @default(CUSTOMER)
+  status            UserStatus @default(ACTIVE)
+  avatar            String?
+  avatarPublicId    String?
+  refreshToken      String?
+  passwordResetToken String?
+  passwordResetExpiry DateTime?
+  emailVerified     Boolean    @default(false)
+  emailVerifyToken  String?
+  lastLogin         DateTime?
+  lastLoginIP       String?
+  createdById       String?
+  createdBy         User?      @relation("UserCreatedBy", fields: [createdById], references: [id])
+  createdUsers      User[]     @relation("UserCreatedBy")
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  // Relations
+  associate         Associate?  @relation("AssociateUser")
+  customer          Customer?   @relation("CustomerUser")
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  supportTickets    SupportTicket[]
+  activityLogs      ActivityLog[]
+  blogs             Blog[]
+
+  @@map("users")
+  @@index([email])
+  @@index([phone])
+  @@index([role])
+  @@index([status])
+}
+
+model Associate {
+  id               String     @id @default(uuid())
+  userId           String     @unique
+  user             User       @relation("AssociateUser", fields: [userId], references: [id], onDelete: Cascade)
+  associateCode    String     @unique
+  parentId         String?
+  parent           Associate? @relation("AssociateHierarchy", fields: [parentId], references: [id])
+  children         Associate[] @relation("AssociateHierarchy")
+  commissionRate   Float      @default(2.5)
+  totalSales       Int        @default(0)
+  totalCommission  Float      @default(0)
+  address          String?
+  city             String?
+  state            String?
+  pincode          String?
+  panNumber        String?
+  aadharNumber     String?
+  bankName         String?
+  bankAccount      String?
+  bankIFSC         String?
+  isActive         Boolean    @default(true)
+  joiningDate      DateTime   @default(now())
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  // Relations
+  assignedPlots    PlotAssignment[]
+  leads            Lead[]
+  bookings         Booking[]
+  commissions      Commission[]
+  siteVisits       SiteVisit[]
+  documents        Document[]  @relation("AssociateDocuments")
+
+  @@map("associates")
+  @@index([parentId])
+  @@index([associateCode])
+}
+
+model LandOwner {
+  id            String   @id @default(uuid())
+  name          String
+  phone         String
+  email         String?
+  address       String?
+  panNumber     String?
+  aadharNumber  String?
+  landArea      Float
+  purchasePrice Float
+  purchaseDate  DateTime
+  registryNumber String?
+  registryDate  DateTime?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  projects      ProjectLandOwner[]
+  documents     Document[]        @relation("LandOwnerDocuments")
+
+  @@map("land_owners")
+}
+
+model Project {
+  id               String        @id @default(uuid())
+  name             String
+  slug             String        @unique
+  type             ProjectType
+  status           ProjectStatus @default(UPCOMING)
+  description      String?       @db.Text
+  shortDescription String?
+  totalArea        Float
+  totalPlots       Int           @default(0)
+  availablePlots   Int           @default(0)
+  location         String
+  city             String
+  state            String
+  pincode          String
+  latitude         Float?
+  longitude        Float?
+  googleMapsUrl    String?
+  startDate        DateTime?
+  expectedCompletion DateTime?
+  completedDate    DateTime?
+  basePrice        Float
+  maxPrice         Float?
+  coverImage       String?
+  coverImagePublicId String?
+  brochureUrl      String?
+  masterPlanUrl    String?
+  rera             String?
+  amenities        String[]
+  nearbyPlaces     Json?
+  isFeature        Boolean       @default(false)
+  isFeatured       Boolean       @default(false)
+  metaTitle        String?
+  metaDescription  String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  // Relations
+  landOwners       ProjectLandOwner[]
+  sectors          Sector[]
+  blocks           Block[]
+  plots            Plot[]
+  gallery          GalleryItem[]
+  leads            Lead[]
+  bookings         Booking[]
+  documents        Document[]    @relation("ProjectDocuments")
+
+  @@map("projects")
+  @@index([status])
+  @@index([type])
+  @@index([slug])
+  @@index([isFeature])
+}
+
+model ProjectLandOwner {
+  id          String    @id @default(uuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  landOwnerId String
+  landOwner   LandOwner @relation(fields: [landOwnerId], references: [id])
+  landArea    Float
+  purchasePrice Float
+  purchaseDate  DateTime
+  createdAt   DateTime  @default(now())
+
+  @@unique([projectId, landOwnerId])
+  @@map("project_land_owners")
+}
+
+model Sector {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  totalArea   Float?
+  totalPlots  Int      @default(0)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  blocks      Block[]
+  plots       Plot[]
+
+  @@unique([projectId, name])
+  @@map("sectors")
+  @@index([projectId])
+}
+
+model Block {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sectorId    String?
+  sector      Sector?  @relation(fields: [sectorId], references: [id])
+  name        String
+  description String?
+  totalPlots  Int      @default(0)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  plots       Plot[]
+
+  @@unique([projectId, name])
+  @@map("blocks")
+  @@index([projectId])
+  @@index([sectorId])
+}
+
+model Plot {
+  id              String     @id @default(uuid())
+  projectId       String
+  project         Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sectorId        String?
+  sector          Sector?    @relation(fields: [sectorId], references: [id])
+  blockId         String?
+  block           Block?     @relation(fields: [blockId], references: [id])
+  plotNumber      String
+  plotCode        String     @unique
+  area            Float
+  areaUnit        String     @default("Sq.Yd")
+  length          Float?
+  width           Float?
+  facing          PlotFacing @default(EAST)
+  isCorner        Boolean    @default(false)
+  roadFacing      Boolean    @default(false)
+  roadWidth       Float?
+  basePrice       Float
+  pricePerUnit    Float
+  currentPrice    Float
+  status          PlotStatus @default(AVAILABLE)
+  latitude        Float?
+  longitude        Float?
+  mapUrl          String?
+  coverImage      String?
+  coverImagePublicId String?
+  notes           String?
+  qrCode          String?
+  currentOwnerId  String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  // Relations
+  assignments     PlotAssignment[]
+  bookings        Booking[]
+  history         PlotHistory[]
+  gallery         GalleryItem[]
+  documents       Document[]       @relation("PlotDocuments")
+  leads           Lead[]
+
+  @@unique([projectId, plotNumber])
+  @@map("plots")
+  @@index([projectId])
+  @@index([blockId])
+  @@index([sectorId])
+  @@index([status])
+  @@index([plotCode])
+}
+
+model PlotAssignment {
+  id          String    @id @default(uuid())
+  plotId      String
+  plot        Plot      @relation(fields: [plotId], references: [id], onDelete: Cascade)
+  associateId String
+  associate   Associate @relation(fields: [associateId], references: [id])
+  assignedAt  DateTime  @default(now())
+  assignedBy  String
+  isActive    Boolean   @default(true)
+  notes       String?
+
+  @@map("plot_assignments")
+  @@index([plotId])
+  @@index([associateId])
+}
+
+model PlotHistory {
+  id          String   @id @default(uuid())
+  plotId      String
+  plot        Plot     @relation(fields: [plotId], references: [id], onDelete: Cascade)
+  action      String
+  actorId     String
+  actorName   String
+  actorRole   Role
+  details     Json?
+  previousStatus PlotStatus?
+  newStatus   PlotStatus?
+  createdAt   DateTime @default(now())
+
+  @@map("plot_history")
+  @@index([plotId])
+  @@index([createdAt])
+}
+
+model Customer {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation("CustomerUser", fields: [userId], references: [id], onDelete: Cascade)
+  customerCode    String   @unique
+  fatherName      String?
+  dateOfBirth     DateTime?
+  gender          String?
+  maritalStatus   String?
+  occupation      String?
+  income          Float?
+  address         String?
+  city            String?
+  state           String?
+  pincode         String?
+  panNumber       String?
+  aadharNumber    String?
+  gstNumber       String?
+  bankName        String?
+  bankAccount     String?
+  bankIFSC        String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  leads           Lead[]
+  bookings        Booking[]
+  payments        Payment[]
+  documents       Document[]   @relation("CustomerDocuments")
+  supportTickets  SupportTicket[]
+
+  @@map("customers")
+  @@index([customerCode])
+}
+
+model Lead {
+  id              String       @id @default(uuid())
+  leadCode        String       @unique
+  source          LeadSource   @default(WEBSITE)
+  stage           LeadStage    @default(NEW)
+  priority        LeadPriority @default(MEDIUM)
+  name            String
+  email           String?
+  phone           String
+  alternatePhone  String?
+  address         String?
+  city            String?
+  state           String?
+  budget          Float?
+  budgetMin       Float?
+  budgetMax       Float?
+  propertyType    ProjectType?
+  projectId       String?
+  project         Project?     @relation(fields: [projectId], references: [id])
+  plotId          String?
+  plot            Plot?        @relation(fields: [plotId], references: [id])
+  customerId      String?
+  customer        Customer?    @relation(fields: [customerId], references: [id])
+  associateId     String?
+  associate       Associate?   @relation(fields: [associateId], references: [id])
+  assignedAt      DateTime?
+  followUpDate    DateTime?
+  nextFollowUp    DateTime?
+  lostReason      String?
+  notes           String?      @db.Text
+  tags            String[]
+  utmSource       String?
+  utmMedium       String?
+  utmCampaign     String?
+  formData        Json?
+  isConverted     Boolean      @default(false)
+  convertedAt     DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relations
+  followUps       FollowUp[]
+  siteVisits      SiteVisit[]
+  quotations      Quotation[]
+  activities      ActivityLog[]
+
+  @@map("leads")
+  @@index([stage])
+  @@index([source])
+  @@index([associateId])
+  @@index([customerId])
+  @@index([followUpDate])
+  @@index([leadCode])
+  @@index([createdAt])
+}
+
+model FollowUp {
+  id          String   @id @default(uuid())
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type        String   // CALL, EMAIL, WHATSAPP, MEETING, VISIT
+  scheduledAt DateTime
+  completedAt DateTime?
+  status      String   @default("SCHEDULED") // SCHEDULED, COMPLETED, MISSED, RESCHEDULED
+  notes       String?
+  nextAction  String?
+  nextDate    DateTime?
+  performedBy String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("follow_ups")
+  @@index([leadId])
+  @@index([scheduledAt])
+  @@index([performedBy])
+}
+
+model SiteVisit {
+  id           String          @id @default(uuid())
+  leadId       String?
+  lead         Lead?           @relation(fields: [leadId], references: [id])
+  customerId   String?
+  associateId  String?
+  associate    Associate?      @relation(fields: [associateId], references: [id])
+  projectId    String?
+  scheduledAt  DateTime
+  completedAt  DateTime?
+  status       SiteVisitStatus @default(SCHEDULED)
+  feedback     String?
+  rating       Int?
+  notes        String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@map("site_visits")
+  @@index([leadId])
+  @@index([scheduledAt])
+}
+
+model Quotation {
+  id          String   @id @default(uuid())
+  quotationNo String   @unique
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id])
+  plotId      String?
+  projectId   String?
+  plotPrice   Float
+  discount    Float    @default(0)
+  gst         Float    @default(0)
+  totalAmount Float
+  validUntil  DateTime
+  status      String   @default("DRAFT") // DRAFT, SENT, ACCEPTED, REJECTED, EXPIRED
+  notes       String?
+  terms       String?  @db.Text
+  pdfUrl      String?
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("quotations")
+  @@index([leadId])
+}
+
+model Booking {
+  id              String        @id @default(uuid())
+  bookingCode     String        @unique
+  plotId          String
+  plot            Plot          @relation(fields: [plotId], references: [id])
+  customerId      String
+  customer        Customer      @relation(fields: [customerId], references: [id])
+  associateId     String?
+  associate       Associate?    @relation(fields: [associateId], references: [id])
+  projectId       String
+  project         Project       @relation(fields: [projectId], references: [id])
+  plotPrice       Float
+  bookingAmount   Float
+  discount        Float         @default(0)
+  gst             Float         @default(0)
+  totalAmount     Float
+  paidAmount      Float         @default(0)
+  pendingAmount   Float
+  status          BookingStatus @default(PENDING)
+  bookingDate     DateTime      @default(now())
+  expectedRegistry DateTime?
+  registryDate    DateTime?
+  expectedPossession DateTime?
+  possessionDate  DateTime?
+  paymentPlan     String?       // FULL, EMI, INSTALLMENT
+  emiMonths       Int?
+  emiAmount       Float?
+  notes           String?
+  registryDetails Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  payments        Payment[]
+  emiSchedule     EMISchedule[]
+  agreement       Agreement?
+  possession      Possession?
+  documents       Document[]    @relation("BookingDocuments")
+  commissions     Commission[]
+
+  @@map("bookings")
+  @@index([customerId])
+  @@index([associateId])
+  @@index([plotId])
+  @@index([projectId])
+  @@index([status])
+  @@index([bookingCode])
+}
+
+model Payment {
+  id              String        @id @default(uuid())
+  paymentCode     String        @unique
+  bookingId       String
+  booking         Booking       @relation(fields: [bookingId], references: [id])
+  customerId      String
+  customer        Customer      @relation(fields: [customerId], references: [id])
+  emiId           String?
+  emi             EMISchedule?  @relation(fields: [emiId], references: [id])
+  amount          Float
+  mode            PaymentMode   @default(CASH)
+  status          PaymentStatus @default(PENDING)
+  transactionId   String?
+  chequeNumber    String?
+  bankName        String?
+  upiId           String?
+  receiptNumber   String        @unique
+  receiptUrl      String?
+  invoiceUrl      String?
+  paymentDate     DateTime      @default(now())
+  notes           String?
+  verifiedBy      String?
+  verifiedAt      DateTime?
+  penalty         Float         @default(0)
+  penaltyReason   String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@map("payments")
+  @@index([bookingId])
+  @@index([customerId])
+  @@index([status])
+  @@index([paymentDate])
+  @@index([receiptNumber])
+}
+
+model EMISchedule {
+  id               String    @id @default(uuid())
+  bookingId        String
+  booking          Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  installmentNo    Int
+  amount           Float
+  principal        Float?
+  interest         Float?
+  dueDate          DateTime
+  paidDate         DateTime?
+  paidAmount       Float?
+  status           EMIStatus @default(PENDING)
+  penaltyAmount    Float     @default(0)
+  penaltyRate      Float     @default(0)
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relations
+  payments         Payment[]
+
+  @@map("emi_schedules")
+  @@index([bookingId])
+  @@index([dueDate])
+  @@index([status])
+}
+
+model Agreement {
+  id              String          @id @default(uuid())
+  bookingId       String          @unique
+  booking         Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  agreementNo     String          @unique
+  content         String?         @db.Text
+  pdfUrl          String?
+  pdfPublicId     String?
+  status          AgreementStatus @default(DRAFT)
+  customerSigned  Boolean         @default(false)
+  customerSignedAt DateTime?
+  adminSigned     Boolean         @default(false)
+  adminSignedAt   DateTime?
+  witnessName     String?
+  witnessPhone    String?
+  stampDuty       Float?
+  registrationFee Float?
+  registrationDate DateTime?
+  subRegistrarOffice String?
+  createdBy       String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@map("agreements")
+}
+
+model Possession {
+  id              String           @id @default(uuid())
+  bookingId       String           @unique
+  booking         Booking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  status          PossessionStatus @default(PENDING)
+  scheduledDate   DateTime?
+  completedDate   DateTime?
+  handoverNotes   String?
+  handoverDocUrl  String?
+  inspectionDone  Boolean          @default(false)
+  inspectionDate  DateTime?
+  utilityConnected Boolean         @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@map("possessions")
+}
+
+model Commission {
+  id           String           @id @default(uuid())
+  associateId  String
+  associate    Associate        @relation(fields: [associateId], references: [id])
+  bookingId    String
+  booking      Booking          @relation(fields: [bookingId], references: [id])
+  plotId       String?
+  amount       Float
+  rate         Float
+  type         String           @default("SALES") // SALES, REFERRAL, BONUS
+  status       CommissionStatus @default(PENDING)
+  approvedBy   String?
+  approvedAt   DateTime?
+  paidAt       DateTime?
+  notes        String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@map("commissions")
+  @@index([associateId])
+  @@index([bookingId])
+  @@index([status])
+}
+
+model Document {
+  id            String       @id @default(uuid())
+  entityType    String       // USER, CUSTOMER, ASSOCIATE, PLOT, BOOKING, AGREEMENT, LAND_OWNER, PROJECT
+  entityId      String
+  type          DocumentType @default(OTHER)
+  name          String
+  description   String?
+  cloudinaryUrl String
+  publicId      String
+  fileType      String
+  fileSize      Int
+  isPublic      Boolean      @default(false)
+  uploadedBy    String
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Polymorphic relations via entity type
+  customer      Customer?    @relation("CustomerDocuments", fields: [entityId], references: [id], map: "document_customer_fk")
+  associate     Associate?   @relation("AssociateDocuments", fields: [entityId], references: [id], map: "document_associate_fk")
+  plot          Plot?        @relation("PlotDocuments", fields: [entityId], references: [id], map: "document_plot_fk")
+  booking       Booking?     @relation("BookingDocuments", fields: [entityId], references: [id], map: "document_booking_fk")
+  landOwner     LandOwner?   @relation("LandOwnerDocuments", fields: [entityId], references: [id], map: "document_land_owner_fk")
+  project       Project?     @relation("ProjectDocuments", fields: [entityId], references: [id], map: "document_project_fk")
+
+  @@map("documents")
+  @@index([entityType, entityId])
+  @@index([entityId])
+}
+
+model GalleryItem {
+  id          String   @id @default(uuid())
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id])
+  plotId      String?
+  plot        Plot?    @relation(fields: [plotId], references: [id])
+  entityType  String   // PROJECT, PLOT, COMPANY, BLOG
+  entityId    String?
+  type        String   @default("IMAGE") // IMAGE, VIDEO, DRONE_IMAGE, 360_IMAGE
+  url         String
+  publicId    String
+  thumbnail   String?
+  title       String?
+  description String?
+  order       Int      @default(0)
+  isPublic    Boolean  @default(true)
+  isFeatured  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("gallery_items")
+  @@index([entityType, entityId])
+  @@index([projectId])
+}
+
+model Notification {
+  id          String           @id @default(uuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        NotificationType @default(SYSTEM)
+  title       String
+  message     String
+  data        Json?
+  isRead      Boolean          @default(false)
+  readAt      DateTime?
+  actionUrl   String?
+  createdAt   DateTime         @default(now())
+
+  @@map("notifications")
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  action      String   // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, etc.
+  entity      String   // Model name
+  entityId    String?
+  oldValues   Json?
+  newValues   Json?
+  ip          String?
+  userAgent   String?
+  description String?
+  createdAt   DateTime @default(now())
+
+  @@map("audit_logs")
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model ActivityLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  leadId      String?
+  lead        Lead?    @relation(fields: [leadId], references: [id])
+  type        String
+  description String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@map("activity_logs")
+  @@index([userId])
+  @@index([leadId])
+  @@index([createdAt])
+}
+
+model Blog {
+  id             String     @id @default(uuid())
+  title          String
+  slug           String     @unique
+  excerpt        String?
+  content        String     @db.Text
+  coverImage     String?
+  coverPublicId  String?
+  category       String     @default("NEWS")
+  tags           String[]
+  status         BlogStatus @default(DRAFT)
+  authorId       String
+  author         User       @relation(fields: [authorId], references: [id])
+  publishedAt    DateTime?
+  viewCount      Int        @default(0)
+  metaTitle      String?
+  metaDescription String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@map("blogs")
+  @@index([slug])
+  @@index([status])
+  @@index([category])
+}
+
+model SupportTicket {
+  id           String                @id @default(uuid())
+  ticketCode   String                @unique
+  userId       String
+  user         User                  @relation(fields: [userId], references: [id])
+  customerId   String?
+  customer     Customer?             @relation(fields: [customerId], references: [id])
+  title        String
+  description  String                @db.Text
+  status       SupportTicketStatus   @default(OPEN)
+  priority     SupportTicketPriority @default(MEDIUM)
+  category     String?
+  assignedTo   String?
+  resolvedAt   DateTime?
+  closedAt     DateTime?
+  resolution   String?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  // Relations
+  replies      TicketReply[]
+
+  @@map("support_tickets")
+  @@index([userId])
+  @@index([status])
+  @@index([ticketCode])
+}
+
+model TicketReply {
+  id          String        @id @default(uuid())
+  ticketId    String
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId      String
+  message     String        @db.Text
+  isInternal  Boolean       @default(false)
+  attachments String[]
+  createdAt   DateTime      @default(now())
+
+  @@map("ticket_replies")
+  @@index([ticketId])
+}
+
+model SystemSettings {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String   @db.Text
+  type        String   @default("STRING") // STRING, NUMBER, BOOLEAN, JSON
+  category    String   @default("GENERAL")
+  description String?
+  updatedBy   String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@map("system_settings")
+  @@index([key])
+  @@index([category])
+}
+
+model Enquiry {
+  id          String   @id @default(uuid())
+  name        String
+  email       String
+  phone       String
+  subject     String?
+  message     String   @db.Text
+  projectId   String?
+  plotId      String?
+  type        String   @default("GENERAL") // GENERAL, PROPERTY, FRANCHISE, CAREER
+  source      String   @default("WEBSITE")
+  ipAddress   String?
+  isRead      Boolean  @default(false)
+  isConverted Boolean  @default(false)
+  leadId      String?
+  createdAt   DateTime @default(now())
+
+  @@map("enquiries")
+  @@index([isRead])
+  @@index([isConverted])
+  @@index([createdAt])
+}

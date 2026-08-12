@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# Disallow search engines from indexing dashboards and auth flows
+Disallow: /admin/
+Disallow: /associate/
+Disallow: /customer/
+Disallow: /auth/
+
+Sitemap: https://www.proptix.com/sitemap.xml
